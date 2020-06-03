@@ -1,0 +1,2037 @@
+//=============================================================================
+/**
+ * Name: SlickGridExtension.js
+ * Description: Adding editors to the slick grid component. (modified to suit the account contact relation cube)
+ *
+ * Confidential & Proprietary, 2015 Tier1CRM Inc.
+ * Property of Tier1CRM Inc.
+ * This document shall not be duplicated, transmitted or used in whole
+ * or in part without written permission from Tier1CRM.
+ */
+//=============================================================================
+(function($)
+{
+    $.extend(true, window, {
+      "Slick": {
+        "AccountContactRelationCube": {
+          "AutoComplete": AutoCompleteEditor,
+          "CheckboxEditor": CheckboxEditor, 
+          "TextEditor" : TextEditor,
+          "PickListEditor": PickListEditor,
+          "DateEditor": DateEditor,
+          "MultiPickListEditor": MultiPickListEditor,
+          "FormatDate": formatDate
+        }
+      }
+  });
+
+  function TextEditor(args) {
+    var $input;
+    var defaultValue;
+    var scope = this;
+
+    this.init = function () {
+    //   $input = $("<INPUT type=text class='editor-text' />")
+    //       .appendTo(args.container)
+    //       .bind("keydown.nav", function (e) {
+    //         if (e.keyCode === $.ui.keyCode.LEFT || e.keyCode === $.ui.keyCode.RIGHT) {
+    //           e.stopImmediatePropagation();
+    //         }
+    //       })
+    //       .focus()
+    //    .select();
+    // if a row is new, it's Id might be undefined - in that case we can enable it. 
+      if (args.item.Contact == null || args.item.Contact.Id == null || args.item.Id.startsWith('new_'))
+      {
+        writeAccess = true; 
+      }
+      else 
+      {
+        writeAccess = hasWriteAccess(args.column.contactsWithWriteAccess, args.item.Contact.Id);
+      }
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        PS.AccountContactRelationCubeHelpers.displayNoWriteAccessWarning();
+        return; 
+      }
+      $input = $("<INPUT type=text  />")
+      .appendTo(args.container)
+      .bind("keydown.nav", function (e) {
+      if (e.keyCode === $.ui.keyCode.LEFT || e.keyCode === $.ui.keyCode.RIGHT) {
+        e.stopImmediatePropagation();
+      }
+      })
+      .focus()
+      .select();
+    };
+
+    this.destroy = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      $input.remove();
+    };
+
+    this.focus = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      $input.focus();
+    };
+
+    this.getValue = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      return $input.val();
+    };
+
+    this.setValue = function (val) {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      $input.val(val);
+    };
+
+    this.loadValue = function (item) {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      defaultValue = item[args.column.field] || "";
+      $input.val(defaultValue);
+      $input[0].defaultValue = defaultValue;
+      $input.select();
+    };
+
+    this.serializeValue = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      return $input.val();
+    };
+
+    this.applyValue = function (item, state) {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      item[args.column.field] = state;
+      PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, state);
+    };
+
+    this.isValueChanged = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      return (!($input.val() == "" && defaultValue == null)) && ($input.val() != defaultValue);
+    };
+
+    this.validate = function () {
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        return; 
+      }
+      if (args.column.validator) {
+        var validationResults = args.column.validator($input.val());
+        if (!validationResults.valid) {
+          return validationResults;
+        }
+      }
+
+      return {
+        valid: true,
+        msg: null
+      };
+    };
+
+    this.init();
+  }
+
+    function CheckboxEditor(args) {
+    var $select;
+    var defaultValue;
+    var scope = this;
+  scope.args = args;
+  
+    this.init = function () {
+    // if a row is new, it's Id might be undefined - in that case we can enable it. 
+    if (args.item.Contact == null || args.item.Contact.Id == null || args.item.Id.startsWith('new_'))
+    {
+      writeAccess = true; 
+    }
+    else 
+    {
+      writeAccess = hasWriteAccess(args.column.contactsWithWriteAccess, args.item.Contact.Id);
+    }
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    } 
+    else if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      PS.AccountContactRelationCubeHelpers.displayNoWriteAccessWarning();
+      return; 
+    }
+
+   // $select = $("<INPUT type=checkbox value='true' class='editor-checkbox' hideFocus>");
+    var field = args.column.field;
+    if (args.item[field] == "true" || args.item[field] == true)
+    {
+      $select = $("<div class='cubeComponentContainer'><label class='control checkbox'><input type='checkbox'><span class='control-indicator' style='position: relative;''></span></label></div>");
+    }
+    else 
+    {
+      $select = $("<div class='cubeComponentContainer'><label class='control checkbox'><input type='checkbox' checked><span class='control-indicator' style='position: relative;''></span></label></div>");
+    }
+    
+    // first click during init should update. 
+    PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, $select[0].childNodes[0].childNodes[0].checked);
+
+    $select.on("click", handleCheckboxClick);
+    $select.appendTo(args.container);
+      $select.focus();
+    };
+
+    this.destroy = function () {
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    } 
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return; 
+    }
+      $select.remove();
+    };
+
+    this.focus = function () {
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    } 
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return; 
+    }
+      $select.focus();
+    };
+
+    this.loadValue = function (item) {
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    } 
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return; 
+    }
+    // todo - remove this stuff and put it inside onclick?
+    // defaultValue = !!item[args.column.field];
+    // if (defaultValue) {
+    //  $select[0].childNodes[0].childNodes[0].checked = false;
+    //  // $select.prop('checked', false);
+    // } else {
+    //  $select[0].childNodes[0].childNodes[0].checked = true
+    //  //$select.prop('checked', true);
+    // }
+      
+    
+      //scope.args.column.topDiv.show();
+
+      // looks like commit here causes infinite loop lol
+    //   scope.args.grid.getEditorLock().commitCurrentEdit();
+    };
+
+    this.serializeValue = function () {
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    } 
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return; 
+    }
+      return $select[0].childNodes[0].childNodes[0].checked;
+      //return $select.prop('checked');
+    };
+
+    this.applyValue = function (item, state) {
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return; 
+    }
+      item[args.column.field] = state;
+      // update the updatelist. 
+      // if (args.column.id == "isActive") {
+      // update resultsActiveOnly accordingly. 
+      PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, state);
+    };
+
+    this.isValueChanged = function () {
+    if (args.item.IsActive == "false")
+    {
+      return; 
+    }
+    if (!writeAccess && args.column.currentRecordType == 'Account')
+    {
+      return false; 
+    }
+      return (this.serializeValue() !== defaultValue);
+    };
+
+    this.validate = function () {
+      return {
+        valid: true,
+        msg: null
+      };
+  };
+
+  function handleCheckboxClick() {
+    defaultValue = !!item[args.column.field];
+    PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, $select[0].childNodes[0].childNodes[0].checked);
+  }
+  
+    this.init();
+  }
+
+
+    function AutoCompleteEditor(args) {
+     var myInput,_this;
+   this.args = args;
+
+     this.init = function () {
+      if (args.column.field == 'Contact.Name') {
+        modeValue = "CONTACTS";
+      } else if (args.column.field == 'Account.Name') {
+        modeValue = "ACCOUNTS";
+    } 
+    // handle case where mode exists. 
+
+      if (!args.item.id.startsWith("new_")) {
+        myInput = $p('<div />');
+          myInput.appendTo(args.container);
+        return; 
+      }
+
+        myInput = $p('<la-input class="required" />');
+    myInput.appendTo(args.container);
+    
+    
+
+      setTimeout(function()
+    {
+          var autoComplete = new SearchAutoComplete($(myInput[0]),
+      {       
+        mode: modeValue,
+        config: args.column.additionalConfig,
+        coverageOnly: false,
+        select: function(value)
+        {
+          _this.applyValue(value); 
+        }   
+      });
+        },5);
+        
+     };
+
+     this.loadValue = function (item) {
+      // if it's not new - just load the value as is. 
+      if (!args.item.id.startsWith("new_")) {
+        if (args.column.field == 'Contact.Name') {
+          $(myInput).append(item['Contact']['Name']);
+        } else if (args.column.field == 'Account.Name') {
+          $(myInput).append(item['Account']['Name']);
+        }
+        return; 
+      }
+
+      if (args.item.id.startsWith("new_")) {
+          if(item[args.column.field] != null)
+          {
+              $(myInput[0]).val(item[args.column.field]);
+          }
+          else if(item[args.column.field.substring(0,args.column.field.indexOf("."))] != null)
+          {
+              $(myInput[0]).val(item[args.column.field.substring(0,args.column.field.indexOf("."))].Name);
+          }
+          else
+          {
+             $(myInput[0]).val = "";
+          }
+      }
+
+      this.item = item;
+      _this = this;
+
+     };
+
+     this.serializeValue = function () {
+
+     };
+
+     this.isValueChanged = function () {
+
+     };
+
+    this.destroy = function () {
+      if (!args.item.id.startsWith("new_")) {
+        return; 
+      }
+        $(myInput[0]).remove();
+     };
+
+     this.applyValue = function (value) {
+
+        //updates the datagrid view with the selected name
+      _this.item[_this.args.column.field] = value.Name;
+
+      if (args.column.field == 'Contact.Name')
+      {
+        PS.AccountContactRelationCubeHelpers.updateUpdateList(_this.args.item.Id, "ContactId", value.Id);
+      } 
+      else if (args.column.field == 'Account.Name')
+        {
+          PS.AccountContactRelationCubeHelpers.updateUpdateList(_this.args.item.Id, "AccountId", value.Id);
+      } 
+      else 
+      {
+        PS.AccountContactRelationCubeHelpers.updateUpdateList(_this.args.item.Id, args.column.field, value.Id);
+      }      
+
+      //update the fields in "item" so that we can save the ids to salesforce 
+      var field = _this.args.column.field;
+      _this.args.item[field.substring(0,field.indexOf("."))] = value;
+      field = field.substring(0,field.indexOf("_")).concat("__c");
+      _this.args.item[field] = value.Id;
+      _this.args.commitChanges();
+     };
+
+    this.validate = function() {
+
+  };
+
+     this.init();
+   }
+
+    function PickListEditor(args) {
+        var $select;
+        var defaultValue = args.item[args.column.field];
+        var _this = this;
+
+        this.init = function() {
+
+          opt_values = args.column.picklistOptions;
+            option_str = ""
+            for(var i = 0; i < opt_values.length; i++){
+              v = opt_values[i];
+              option_str += "<OPTION value='"+v+"'>"+v+"</OPTION>";
+              //option_str += "<li class='aceMenuItem' data-value='"+v+"'>"+v+"</li>";
+            }
+            $select = $("<SELECT tabIndex='0' style='width:100%;' class='editor-select'>"+ option_str +"</SELECT>");
+            //$select = $("<ul data-type='aceMenu' class='buttonMenu aceMenu'>"+ option_str +"</ul>");
+            $select.appendTo(args.container);
+            //$select.val(defaultValue);
+            $select.focus();
+        };
+
+        this.destroy = function() {
+            $select.remove();
+        };
+
+        this.focus = function() {
+            $select.focus();
+        };
+
+        this.loadValue = function(item) {
+            defaultValue = item[args.column.field];
+            $select.val(defaultValue);
+        };
+
+        this.serializeValue = function() {
+            if(args.column.picklistOptions){
+              return $select.val();
+            }
+        };
+
+        this.applyValue = function(item,state) {
+            item[args.column.field] = state;
+            PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, state);
+        };
+
+        this.isValueChanged = function() {
+            return ($select.val() != defaultValue);
+        };
+
+        this.validate = function() {
+            return {
+                valid: true,
+                msg: null
+            };
+        };
+
+        this.init();
+    }
+
+    function MultiPickListEditor(args) {
+        var $select;
+        var modal;
+        var multiSelectContainer;
+        var modalBottomContainer;
+        var thisMultiSelect;
+        var defaultValue = args.item[args.column.field];
+        var initialSelectedList;
+        var dataItem;
+        var _this = this;
+
+        this.init = function() {
+      // if a row is new, it's Id might be undefined - in that case we can enable it. 
+      if (args.item.Contact == null || args.item.Contact.Id == null || args.item.Id.startsWith('new_'))
+      {
+        writeAccess = true; 
+      }
+      else 
+      {
+        writeAccess = hasWriteAccess(args.column.contactsWithWriteAccess, args.item.Contact.Id);
+      }
+      if (!writeAccess && args.column.currentRecordType == 'Account')
+      {
+        //display warning
+        PS.AccountContactRelationCubeHelpers.displayNoWriteAccessWarning();
+        return; 
+      }
+      if (args.item.IsActive == "false")
+      {
+        return; 
+      }
+
+            modal = args.column.modal;
+            modal.show();
+
+            // modal header
+            try {
+              if (args.column.currentRecordType == 'Account')
+              {
+                modalHeaderName = args.item.Contact.Name;
+              }
+              else
+              {
+                modalHeaderName = args.item.Account.Name;
+              }
+            }
+            catch(err)
+            {
+              modalHeaderName = "";
+            }
+            
+            var modalHeader = $('<div class="ui-dialog-titlebar ui-widget-header ui-corner-all ui-helper-clearfix ui-draggable-handle"><span id="ui-id-31" class="ui-dialog-title">Role(s) - ' 
+              + modalHeaderName 
+              + '</span><button id="acrcModalCloseButton" type="button" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-icon-only ui-dialog-titlebar-close" role="button" title="Close"><span class="ui-button-icon-primary ui-icon ui-icon-closethick"></span><span class="ui-button-text">Close</span></button></div>').appendTo(modal);
+            $("#acrcModalCloseButton").on('click', this.destroy);
+
+            // multiselect container
+            multiSelectContainer = $('<div class="multiSelectContainer ui-dialog-content ui-widget-content"/>');
+            multiSelectContainer.appendTo(modal);
+            modalBottomContainer = $('<div class="ui-dialog-buttonpane ui-widget-content ui-helper-clearfix"/>');
+            modalBottomContainer.appendTo(modal);
+        };
+
+        this.destroy = function() {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return; 
+          }
+          $('#accountContactRelationCubeModal').empty();
+          modal.hide();
+        };
+
+        this.focus = function() {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return; 
+          }
+          modal.focus();
+            // $select.focus();
+        };
+
+        this.loadValue = function(item) {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return; 
+          }
+          dataItem = item;
+          value = item[args.column.field];
+          if (value == null)
+          {
+            initialSelectedList = "";
+          }
+          else {
+            initialSelectedList = value;
+          }
+
+          // populate selectedItems from slickgrid item. 
+          valueArray = [];
+          if (value != "null" && value != undefined)
+          {
+            valueSplit = value.split(";");
+            for (role in valueSplit)
+            {
+              if (value.hasOwnProperty(role))
+              {
+                if (valueSplit[role].length > 0)
+                {
+                  valueArray.push(valueSplit[role]);
+                }
+              }
+            }
+          }
+          
+          // make the ACEMultiSelect object. 
+          var picklistValues = args.column.picklistOptions;
+          thisMultiSelect = $(new ACEMultiSelect({dataProvider : picklistValues, selectedItems : valueArray}));
+          thisMultiSelect[0].appendTo(multiSelectContainer);
+
+          // ok and cancel buttons 
+          // note - hardcoded margins from '.ui-dialog .ui-dialog-buttonpane button' in common.css because the underlying css was not consistent. 
+      var cancelButton
+      = $('<button type="button" id="acrcModalCancelButton" class="cancelButton cancelButton ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only la-ripple-container" style="float: right; margin:.5em .4em .5em 0!important;" role="button" ripple="true"><span class="ui-button-text">Cancel</span><la-ripple><span id="la-ripple-ink" class="" style="width: 74px; height: 74px; top: -19.35px; left: 15.825px;"></span></la-ripple></button>').appendTo(modalBottomContainer);     
+          var okButton
+      = $('<button type="button" id="acrcModalOkButton" class="acrcModalOkButton confirmButton ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only la-ripple-container" style="float: right;margin:.5em .4em .5em 0!important;"><span class="ui-button-text">OK</span></button>').appendTo(modalBottomContainer);
+          $("#acrcModalOkButton").on('click', this.handleOkButton);
+          $("#acrcModalCancelButton").on('click', this.destroy);
+        };
+
+        this.serializeValue = function() {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return; 
+          }
+          if (thisMultiSelect[0]._selectedItemsList.options.selectedItems != undefined && thisMultiSelect[0]._selectedItemsList.options.selectedItems != null)
+          {
+            return thisMultiSelect[0]._selectedItemsList.options.selectedItems;
+          } 
+        };
+
+        this.applyValue = function(item,state) {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return; 
+          }
+          // convert the array of picklist options to a string.
+          var valueString = "";
+          for (i in state)
+          {
+            if (state.hasOwnProperty(i))
+            {
+              valueString += state[i] + ';';
+            }
+          }
+            item[args.column.field] = valueString;
+            PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, valueString);
+        };
+
+        this.isValueChanged = function() {
+          if (args.item.IsActive == "false")
+          {
+            return; 
+          }
+          if (!writeAccess && args.column.currentRecordType == 'Account')
+          {
+            return false; 
+          }
+          initialSelectedListSplit = initialSelectedList.split(";");
+          // case: 'something;' - should be ['something'] not ['something', '']
+          for (i in initialSelectedListSplit)
+          {
+            if (initialSelectedListSplit[i].length <= 0)
+            {
+              initialSelectedListSplit.splice(i, 1);
+            }
+          }
+          return JSON.stringify(initialSelectedListSplit) == JSON.stringify(thisMultiSelect[0]._selectedItemsList.options.selectedItems);
+        };
+
+        this.validate = function() {
+            return {
+                valid: true,
+                msg: null
+            };
+        };
+
+        this.handleOkButton = function() {
+          _this.applyValue(dataItem, thisMultiSelect[0]._selectedItemsList.options.selectedItems);
+          _this.destroy();
+          PS.AccountContactRelationCubeHelpers.commitACRCGridChanges();
+          return;
+        }
+
+        this.init();
+    }
+
+    function DateEditor(args) {
+      var $input;
+      var defaultValue;
+      var scope = this;
+      var calendarOpen = false;
+      var writeAccess;
+    
+      this.init = function () {
+        // if a row is new, it's Id might be undefined - in that case we can enable it. 
+        if (args.item.Contact == null || args.item.Contact.Id == null || args.item.Id.startsWith('new_'))
+        {
+          writeAccess = true; 
+        }
+        else 
+        {
+          writeAccess = hasWriteAccess(args.column.contactsWithWriteAccess, args.item.Contact.Id);
+        }
+        if (args.item.IsActive == "false")
+        {
+          // // todo - use the formatter. 
+          // console.log(args.column.formatter);
+          // // (row,cell,value,columnDef,dataContext)
+          // console.log(args);
+
+          columnField = args.column.field;
+          textToDisplay = args.item[columnField];
+          $p('<div>' + textToDisplay + '<div/>').appendTo(args.container);
+          return; 
+        }
+        if (!writeAccess && args.column.currentRecordType == 'Account')
+        {
+          
+          columnField = args.column.field;
+          textToDisplay = args.item[columnField];
+          $p('<div>' + textToDisplay + '<div/>').appendTo(args.container);
+          PS.AccountContactRelationCubeHelpers.displayNoWriteAccessWarning();
+          return; 
+        }
+
+        var datePickerDiv = $p('<div/>');
+        var datePickerSpan = $p('<span/>').appendTo(datePickerDiv);
+    
+        $input = $("<INPUT type=text class text='editor-text' style='position: relative; z-index: 10000' readonly/>")
+        .datepicker()
+        .bind("change",function(e){
+                  //debugger;
+                  var d = new Date(e.currentTarget.value);
+                  var dc = new Date(this.defaultValue);
+                  if(d.setHours(0,0,0,0) != dc.setHours(0,0,0,0))
+                  {
+                    $(args.column.topDiv).show(333);
+                  }
+                  // changing the date updates the updatelist. 
+                  PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, formatDate(new Date($input.val())));
+              })
+        .appendTo(datePickerSpan);
+        datePickerDiv.appendTo(args.container);
+        //args.column.topDiv.show();
+    
+        $input.datepicker({
+          beforeShow: function () {
+            calendarOpen = true
+          },
+          onClose: function () {
+            calendarOpen = false
+          }
+        });
+      };
+    
+      this.destroy = function () {
+        if (args.item.IsActive == "false")
+        {
+          return; 
+        }
+        if (!writeAccess && args.column.currentRecordType == 'Account')
+        {
+          return; 
+        }
+        $.datepicker.dpDiv.stop(true, true);
+        $input.datepicker("hide");
+        $input.removeClass("hasDatepicker");
+        $input.datepicker("destroy");
+        $input.remove();
+      };
+    
+      this.show = function () {
+        if (calendarOpen) {
+          $.datepicker.dpDiv.stop(true, true).show();
+        }
+      };
+    
+      this.hide = function () {
+        if (calendarOpen) {
+          $.datepicker.dpDiv.stop(true, true).hide();
+        }
+      };
+    
+      this.position = function (position) {
+        if (!calendarOpen) {
+          return;
+        }
+    
+      };
+    
+      this.focus = function () {
+       $input.focus();
+      };
+    
+    
+      this.loadValue = function (item) {
+        if (args.item.IsActive == "false")
+        {
+          return; 
+        }
+        if (!writeAccess && args.column.currentRecordType == 'Account')
+        {
+          return false; 
+        }
+        if(item[args.column.field] != "" && item[args.column.field] != null)
+        {
+          defaultValue = new Date(item[args.column.field]);;
+          var dateValue = new Date(defaultValue.getTime() + (defaultValue.getTimezoneOffset() *  60000));
+          $input.val(dateValue.toLocaleDateString());
+          $input[0].defaultValue = dateValue.getTime();
+        }
+        $input.select();
+      };
+    
+      this.serializeValue = function () {
+        if (args.item.IsActive == "false")
+        {
+          return; 
+        }
+        if (!writeAccess && args.column.currentRecordType == 'Account')
+        {
+          return; 
+        }
+        return $input.val();
+      };
+    
+      this.applyValue = function (item, state) {
+        var date = new Date(state);
+        var miliTime = date.getTime()  + (date.getTimezoneOffset() * 60000)
+        item[args.column.field] = miliTime;
+
+        PS.AccountContactRelationCubeHelpers.updateUpdateList(args.item.Id, args.column.field, formatDate(date));
+      };
+    
+      this.isValueChanged = function () {
+        if (args.item.IsActive == "false")
+        {
+          return; 
+        }
+        if (!writeAccess && args.column.currentRecordType == 'Account')
+        {
+          return false; 
+        }
+        return (!($input.val() == "" && defaultValue == null)) && ($input.val() != defaultValue);
+      };
+    
+      this.validate = function () {
+        return {
+          valid: true,
+          msg: null
+        };
+      };
+    
+      this.init();
+      }
+
+
+  // helper function - https://stackoverflow.com/questions/23593052/format-javascript-date-to-yyyy-mm-dd
+  function formatDate(date) {
+    var d = new Date(date);
+    var month = '' + (d.getMonth() + 1);
+    var day = '' + d.getDate();
+    var year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  }
+
+  // given a contactID
+  function hasWriteAccess(contactsWithWriteAccess, contactId) 
+  {
+    for (contactIndex in contactsWithWriteAccess)
+    {
+      if (contactsWithWriteAccess.hasOwnProperty(contactIndex))
+      {
+        if (contactId == contactsWithWriteAccess[contactIndex].Id)
+        {
+          if (contactsWithWriteAccess[contactIndex].UserRecordAccess.HasEditAccess == "true")
+          {
+            return true; 
+          }
+        }
+      }
+    }
+    console.log("no write access :(");
+    return false; 
+  }
+
+  //# sourceURL=SlickGridExtensions.js
+})(jQuery);
+
+
+
+
+
+
+/*
+ *
+ *
+ *
+ *
+ *
+ * The actual AccountContactRelationCube
+ *
+ *
+ *
+ *
+ *
+ *
+ */
+
+(function($)  
+{
+  var cubeBody = $('<div id="accountContactRelationCubeContainer" class="customCubeContainer"/>');
+  var dataProviderCache; 
+  var config; 
+  var modal; 
+
+  var currentLimit; // limit of number of rows that gets returned. increment by 1000 everytime the user wants to load more. 
+  var currentNewId;
+
+  /* grid */
+  var grid; 
+
+  /* filter elements cache */ 
+  var showInactiveCache;
+  var hasExpandedFilterCache;
+  var filterTextCache;
+
+  /* data cache*/
+  var cubeDataCache;
+  var updateListCache; 
+  var resultsAllCache; 
+  var resultsActiveOnlyCache;
+
+  /* bottom bar */
+  var shouldShowSaveAndCancelButton;
+  var currentNumberOfRowsDisplayed; 
+
+  /* random flags*/
+  var shouldShowDeactivationConfirmation = false;  
+
+  function AccountContactRelationCube() {
+    // get soap libs from salesforce so we can connect to salesforce. 
+    if (window.sforce == null)
+    {
+      $("head").append('<script type="text/javascript" src="/soap/ajax/42.0/connection.js" />');
+      $("head").append('<script type="text/javascript" src="/soap/ajax/42.0/apex.js" />');
+    }
+  }
+
+  AccountContactRelationCube.prototype.clear = function()
+  {
+    $(cubeBody).empty();
+  }
+  
+  AccountContactRelationCube.prototype.cancel = function()
+  {
+    //Cancel the current pull transaction
+    if (this._token != null)
+    {
+      this._token.cancel();
+      this._token = null;
+    }
+  }
+  
+  /*
+    fields in main data grid will be in data provider. 
+    parent = window you're appending to. 
+  */
+  AccountContactRelationCube.prototype.setData = function(dataProvider)
+  { 
+    if (this._token != null) 
+    {
+      this._token.cancel();
+      this._token = null;
+    }
+    
+    this._token = new AsyncToken(resultHandler);
+
+    dataProviderCache = dataProvider;
+
+    // assigns session id and executes webservice. 
+    sforce.connection.sessionId = ACE.Salesforce.sessionId;  // Get the Session Id for Authentication
+
+    // get configs and cube data. 
+    sforce.apex.execute("AccountContactRelationCubeController", "getConfig", {}, 
+    { 
+      onSuccess: function(result){
+        config = JSON.parse(result);
+        currentLimit = 1000;
+        hasExpandedFilterCache = config.isOpen;
+        showInactiveCache = config.showInactive;
+        filterTextCache = '';
+
+        sforce.apex.execute("AccountContactRelationCubeController", "getCubeData", {recordId : dataProvider.Id, loggedInUserId  : ALM.modelLocator.userId(), loadLimit : currentLimit}, 
+        { 
+          onSuccess: _token.onSuccess,        
+          onFailure: _token.onFailure
+        });
+      },    
+      onFailure: function(result){
+        console.log("Contact your administrator, your AFRs are messed up :D");
+        console.log(result);
+        var errormsg = "";
+        
+        if ( result.faultcode.includes("INSUFFICIENT_ACCESS") || result.faultstring.includes("INSUFFICIENT_ACCESS") )
+        {
+          errormsg = "You do not have permissions to view this Contact. Please contact your administrator"
+        }
+                      
+        ACE.FaultHandlerDialog.show
+        ({
+          title:   "Warning",
+          message: errormsg, 
+          error:   result.faultstring
+        });
+      }
+    });
+  }
+
+  AccountContactRelationCube.prototype.measure = function()
+  {
+  
+  }
+
+  AccountContactRelationCube.prototype.createChildren = function(parent)
+  {   
+    $(cubeBody).appendTo(parent);
+  }
+
+  function AsyncToken(resultHandler)
+  {
+    this._isCancelled = false;
+    this._resultHandler = resultHandler;
+    
+    var _this = this;
+    _token = _this;
+    
+    this.onSuccess = function(result)
+    {
+      _result = result;
+      if (!_this._isCancelled)
+      {
+        _this._resultHandler(result);
+      }
+    };
+    
+    this.onFailure = function(message)
+    {
+      console.log(message);
+      if (!_this._isCancelled)
+      {
+        ACE.FaultHandlerDialog.show(message.message);
+      }
+    };
+  }
+  
+  AsyncToken.prototype.cancel = function()
+  {
+    this._isCancelled = true;
+    _token._isCancelled = true;
+  };
+
+  function resultHandler(result) 
+  {
+    AccountContactRelationCube.prototype.clear();
+
+    result = result[0]; // unwrap AccountContactRelationCubeData object from array
+
+    // store the results in the container. 
+    storeResults(result);
+    storeResultsActiveOnly();
+
+    // make all the wrappers
+    var collapsibleContainerButtonWrapper 
+      = $('<div id="collapsibleContainerButtonWrapper"/>').appendTo(cubeBody);
+    var addNewButtonContainer
+      = $('<div id="addNewButtonContainer" class="powerCubeButtonContainer" style="padding-bottom: 5px" />').appendTo(cubeBody);
+    var indirectAccountsTableSection = $('<div Id="tableContainer"></div>').appendTo(cubeBody);
+    updateListCache = {};
+    currentNewId = 0;
+
+    // reset flags and whatnot
+    shouldShowDeactivationConfirmation = false;
+
+    // hardcoded some css math to center the modal lol
+    modal = $('<div id="accountContactRelationCubeModal" class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-front multiSelectDialog dataGridColumnManager aceDialog ui-dialog-buttons ui-draggable" tabindex="-1" role="dialog" style="height: auto!important; width: 450px!important; min-width:450px!important; top:100px; left:calc((50% - 225px)); display: block; z-index: 1002; bottom: auto;"/>').appendTo(cubeBody); 
+    modal.hide();
+
+    // make filter
+    addAccountContactRelationGridFilter();
+
+    var saveAndCancelButtonsContainer
+      = $('<div id="saveAndCancelButtonsContainer" class="powerCubeButtonContainer" style="padding-top: 8px; position: relative; bottom: 10px;"/>').appendTo(cubeBody);
+    shouldShowSaveAndCancelButton = false; 
+    addSaveAndCancelButtons();
+
+    // choose which result view to use and make the grid
+    if (showInactiveCache) 
+    {
+      addAccountContactRelationGrid(resultsAllCache);
+    }
+    else {
+      addAccountContactRelationGrid(resultsActiveOnlyCache);
+    }
+
+    // mutation observer - if collapsible button is touched, then redraw the grid with updated number of rows. 
+    var targetNode = document.getElementById('collapsibleContainerButtonWrapper');
+    var mutationObserverConfig = { attributes: true, childList: true, subtree: true };
+    var refreshNumberOfRows = function(mutationsList, observer)
+    {
+      updateGridSize();
+    }
+    // Create an observer instance linked to the callback function
+    var observer = new MutationObserver(refreshNumberOfRows);
+
+    // Start observing the target node for configured mutations
+    observer.observe(targetNode, mutationObserverConfig);
+  }
+
+  function addAccountContactRelationGridFilter() 
+  {
+    // handleFilterToggle();
+    if (hasExpandedFilterCache)
+    {
+      turnFilterOn();
+    }
+    else 
+    {
+      turnFilterOff();
+    }
+
+    // buttons
+    var addNewButton
+      = $('<button type="button" class="applyToSelected la-ripple-container" style="float: right;">' + config.newButtonLabel +'</button>').appendTo($('#addNewButtonContainer'));
+    addNewButton.on("click", handleNewButton);
+  }
+
+  function turnFilterOn() 
+  {
+    $("#collapsibleContainerButtonWrapper").empty();
+    var collapsibleContainer
+      = $('<div class="collapsibleContainer containerOpen"/>').appendTo($('#collapsibleContainerButtonWrapper'));
+    var collapseSection
+      = $('<la-collapse id="collapsibleSection" style="height: 0px;" open/>').appendTo(collapsibleContainer);
+    var collapseButtonWrapper
+      = $('<div class="collapsibleContainerButtonWrapper">').appendTo(collapsibleContainer);
+    var collapseButton
+      = $('<div class="collapsibleContainerButton open" title="" data-has-title="true"></div>').appendTo(collapseButtonWrapper);
+    collapseButton.on("click", handleFilterToggle);
+    hasExpandedFilterCache = true; 
+    addAccountContactRelationGridFilterContent();
+    updateFilterButtonState(true);
+  }
+
+  function turnFilterOff() 
+  {
+    $("#collapsibleContainerButtonWrapper").empty();
+    var collapsibleContainer
+      = $('<div class="collapsibleContainer"/>').appendTo($('#collapsibleContainerButtonWrapper'));
+    var collapseSection
+      = $('<la-collapse id="collapsibleSection" style="height: 0px;" />').appendTo(collapsibleContainer);
+    var collapseButtonWrapper
+      = $('<div class="collapsibleContainerButtonWrapper">').appendTo(collapsibleContainer);
+    var collapseButton
+      = $('<div class="collapsibleContainerButton" title="" data-has-title="true"></div>').appendTo(collapseButtonWrapper);
+    collapseButton.on("click", handleFilterToggle);
+    hasExpandedFilterCache = false; 
+    addAccountContactRelationGridFilterContent();
+    updateFilterButtonState(false);
+  }
+
+  // used for sorting by the ORDER AFR. 
+  function compare(a,b) 
+  {
+    if (a.order < b.order)
+    {
+      return -1;
+    }
+    if (a.order > b.order)
+    {
+      return 1;
+    }
+    return 0;
+  }
+
+  // generates the stuff inside the collapsible filter section
+  function addAccountContactRelationGridFilterContent() 
+  {
+    // generate inactive checkbox and label
+    var showInactiveContainer
+      = $('<div id="showInactiveContainer" class="componentContainer subSectionItem" />').appendTo($("#collapsibleSection"));
+    var showInactiveCheckboxContainer
+      = $('<label class="control checkbox" />').appendTo(showInactiveContainer);
+    
+    // generate checkbox given the checkbox state in the wrapper
+    if (showInactiveCache) 
+    {
+      var showInactiveCheckbox
+        = $('<input type="checkbox" id="showInactiveAccountContactRelationsCheckbox" class="primaryLabel" checked />').appendTo(showInactiveCheckboxContainer);
+    }
+    else 
+    {
+      var showInactiveCheckbox
+        = $('<input type="checkbox" id="showInactiveAccountContactRelationsCheckbox" class="primaryLabel" />').appendTo(showInactiveCheckboxContainer);
+    }
+
+    if(ACEUtil.isIE()) {
+      $(document).on('click', '#showInactiveAccountContactRelationsCheckbox', handleShowInactiveCheckbox);
+    } else {
+      showInactiveCheckbox.change(handleShowInactiveCheckbox);
+    }
+
+    var showInactiveCheckboxSpan
+      = $('<span class="control-indicator" style="position: relative;"/>').appendTo(showInactiveCheckboxContainer);
+    var showInactiveCheckboxText
+      = $('<div id="showInactiveLabel" class="label">' + config.showInactiveLabel + '</div>').appendTo(showInactiveContainer);
+
+    // generate textarea given the state in the wrapper
+    var filterTextArea
+      = $('<la-input id="filterTextArea" placeholder="' + config.filterTextPlaceholderLabel + '" />').appendTo($("#collapsibleSection"));
+    $('#filterTextArea').val(filterTextCache);
+    $(document).on("keyup", handleFilterTextChange); //changed from filterTextArea.on() to $(document).on() because it doesnt work on IE. 
+  }
+
+  function addAccountContactRelationGrid(result) 
+  {
+    if (result == null)
+    {
+      return;
+    }
+
+    currentRecordType = cubeDataCache.currentRecordType;
+
+    // make section and header
+    var indirectAccountContactRelationTableSection = $('<div Id="IndirectAccountContactRelationTableSection" class="section accountSummary"></div>').appendTo($('#tableContainer'));
+    var indirectAccountContactRelationTableHeader = $('<div class="sectionHeader accountHeader"></div>').appendTo(indirectAccountContactRelationTableSection);
+    var indirectAccountContactRelationTableHeaderTitleContainer = $('<div class="headerItem headerTitleContainer"></div>').appendTo(indirectAccountContactRelationTableHeader);
+
+    // make grid section and grid
+    var indirectAccountContactRelationGridSection = $('<div class="subSection cubeDataGridContainer"></div>').appendTo(indirectAccountContactRelationTableHeaderTitleContainer);
+    var numRows = calculateMaxNumberOfRows();
+    currentNumberOfRowsDisplayed = numRows; 
+    var indirectAccountContactRelationGrid = new ACEDataGrid($(indirectAccountContactRelationGridSection), { maxNumberOfRows:numRows, 
+      autoHeight: true, 
+      forceFitColumns: true, 
+      explicitInitialization: true,
+      editable: true,                             
+      headerRowHeight: 40,
+      sortable: true
+    });
+
+    columns = [];
+    config.columnConfigs.sort(compare); // sorts based on ORDER from the afr. 
+
+    // formatters
+    var isActiveFormatter = function(row, cell, value, columnDef, dataContext) 
+    {
+      disabled = ""; 
+
+      if (dataContext.isActiveCache == false || dataContext.isActiveCache == 'false' )
+      {
+        disabled = " disabled='disabled' "; 
+      }
+
+      if (value == "true" || value == true) // its a string lol
+      {
+        return "<label class='control checkbox'><input type='checkbox' id='isActive-ID-" + dataContext.id 
+        + "' class='primaryLabel' " + disabled + "checked><span class='control-indicator' style='position: relative;' /></label>";
+      }
+      else 
+      {
+        return "<label class='control checkbox'><input type='checkbox' id='isActive-ID-" + dataContext.id 
+        + "' class='primaryLabel'" + disabled + "><span class='control-indicator' style='position: relative;' /></label>";
+      }
+    }
+
+    var dateFormatter = function(row,cell,value,columnDef,dataContext)
+    {  
+      if(value === '')
+      {
+        return "<span class='fakeDatePicker'></span>";
+      }
+      var dateValue = new Date(value);
+      var dateString = '';
+      var correctedMilliTime = dateValue.getTime()  + (dateValue.getTimezoneOffset() * 60000);
+      if(correctedMilliTime > 0)
+      {
+        dateValue = new Date(correctedMilliTime);
+        dateString = dateValue.toLocaleDateString();
+      }
+      return "<span class='fakeDatePicker'>" + dateString + "</span>";
+    }
+
+    var autoCompleteFormatter = function(row,cell,value,columnDef,dataContext)
+    {  
+      dataContext.fullName = value; 
+      if (value == undefined || value == null || value == "")
+      {
+        return '<div class="required">&nbsp;</div>';
+      }
+      else {
+        return '<div>' + value + '</div>';
+      }
+    }
+
+    var textFormatter = function(row,cell,value,columnDef,dataContext)
+    {  
+      return '<div>' + value + '</div>';
+    }
+
+    curColId = 0; 
+    for (columnConfig in config.columnConfigs)
+    {
+      if (config.columnConfigs[columnConfig].visible == false)
+      {
+        continue;
+      }
+
+      // if current = account, disable accounts and vice versa. 
+      if ((currentRecordType == 'Account' && config.columnConfigs[columnConfig].dataField == 'Account.Name')
+        || (currentRecordType == 'Contact' && config.columnConfigs[columnConfig].dataField == 'Contact.Name'))
+      {
+        continue;
+      }
+
+      if (config.columnConfigs.hasOwnProperty(columnConfig))
+      {
+        var newColumn = {};
+        newColumn.id = "col_" + curColId;
+        curColId += 1;
+        newColumn.field = config.columnConfigs[columnConfig].dataField;
+        newColumn.name = config.columnConfigs[columnConfig].label;
+        newColumn.sortable = false; 
+        newColumn.contactsWithWriteAccess = cubeDataCache.contactsWithWriteAccess;
+        newColumn.currentRecordType = cubeDataCache.currentRecordType;
+        switch(config.columnConfigs[columnConfig].fieldType)
+        {
+          case "CHECKBOX":
+            newColumn.editor = Slick.AccountContactRelationCube.CheckboxEditor;
+            newColumn.formatter = isActiveFormatter;
+            newColumn.width = 45;
+            break;
+          case "DATE":
+            newColumn.editor = Slick.AccountContactRelationCube.DateEditor;
+            newColumn.formatter = dateFormatter;
+            newColumn.width = 110;
+            break;
+          case "MULTIPICKLIST":
+            newColumn.picklistOptions = config.columnConfigs[columnConfig].picklistOptions;
+            newColumn.editor = Slick.AccountContactRelationCube.MultiPickListEditor;
+            newColumn.width = 150;
+            newColumn.modal = modal;
+            break;
+          case "PICKLIST":
+            newColumn.picklistOptions =  config.columnConfigs[columnConfig].picklistOptions;
+            newColumn.editor = Slick.AccountContactRelationCube.PickListEditor;
+            newColumn.width = 150;
+            newColumn.modal = modal;
+            break;
+          case "AUTOCOMPLETE":
+            newColumn.editor = Slick.AccountContactRelationCube.AutoComplete;
+            newColumn.formatter = autoCompleteFormatter;
+            newColumn.width = 135;
+            break;
+          case "TEXT":
+            newColumn.editor = Slick.AccountContactRelationCube.TextEditor;
+            newColumn.formatter = textFormatter;
+            newColumn.width = 140;
+            break;
+        }
+        columns.push(newColumn);
+      }
+    }
+
+    // slickgrid requires an "id" key ("Id" doesn't work)
+    tableData = result;
+
+    if (tableData[0] !== undefined) 
+    {
+      for (tableEntry in tableData)
+      {
+        if (currentRecordType == 'Account')
+        {
+          tableData[tableEntry]["id"] = tableData[tableEntry]["Id"];
+        }
+        else if (currentRecordType == 'Contact') 
+        {
+          tableData[tableEntry]["id"] = tableData[tableEntry]["AccountId"];
+        }
+        
+      }
+    } 
+    else 
+    {
+      // if there is exactly 1 indirect contact, result is a record, not an array of records. 
+      if (currentRecordType == 'Account')
+      {
+        tableData["id"] = tableData["Id"];
+      }
+      else if (currentRecordType == 'Contact')
+      {
+        tableData["id"] = tableData["AccountId"];
+      }
+    }
+
+    // make isActiveCache for each row. this will be a cached version of isActive that is unchangable. used for when determining if a row is editable or not. 
+    if (tableData[0] !== undefined) 
+    {
+      for (tableEntry in tableData)
+      {
+        tableData[tableEntry]["isActiveCache"] = tableData[tableEntry]["IsActive"];
+      }
+    } 
+    else 
+    {
+      // if there is exactly 1 indirect contact, result is a record, not an array of records. 
+      tableData["isActiveCache"] = tableData["IsActive"];
+    }
+
+    indirectAccountContactRelationGrid.setColumns(columns); //, formatter);
+    indirectAccountContactRelationGrid.grid.init();
+    //todo deleter
+    console.log(tableData);
+    indirectAccountContactRelationGrid.addItems(tableData);
+
+    grid = indirectAccountContactRelationGrid;
+
+    $(window).resize(function() 
+    {
+      grid.grid.resizeCanvas();
+    });
+
+    // make inactive rows uneditable. 
+    grid.grid.onBeforeEditCell.subscribe(function(e, args)
+    {
+      if (args.item.isActiveCache == false || args.item.isActiveCache == 'false')
+      {
+        return false; 
+      }
+    });
+
+    grid.dataProvider.setFilter(
+      function(item)
+      {
+        for (var property in item)
+        {
+          if (item.hasOwnProperty(property))
+          {
+            if (item[property].toString().toLowerCase().includes(filterTextCache.toLowerCase()) && property != "ContactId" && property != "AccountId") // don't match on id. 
+            {
+              // special case for contact and account because they include IDs and we don't want to filter for those. 
+              if (property == "Contact" || property == "Account")
+              {
+                if (item[property]["Name"].toString().toLowerCase().includes(filterTextCache.toLowerCase()))
+                {
+                  return true;
+                }
+                return false;
+              }
+              return true; 
+            }
+          }
+        }
+        return false;  
+      }
+    );
+
+    grid.grid.onColumnsReordered.subscribe(function(e,args)
+    {
+      updateColumnOrder(e, args);
+    })
+
+    // update gridsize if size of cube is changed via dragging the cube line or if size of cube is changed via the button.
+    $(window).on('pointerup', function() 
+    {
+      updateGridSize();
+    });
+    $(window).on('click', function()
+    {
+      updateGridSize();
+    });
+    $(window).on('resize', function()
+    {
+      updateGridSize();
+    });
+  }
+
+  function updateColumnOrder(e, args) 
+  {
+    var settingsToUpdate = args.grid.getColumns();
+		for(var x = 0; x < settingsToUpdate.length; x++)
+		{
+			var setting = settingsToUpdate[x];
+			setting.order = x;
+		}	
+		
+    var JSONsettings = JSON.stringify(settingsToUpdate);
+    var attributeName = 'ACRCColumnConfig';
+
+    columnOrder = {}; // key=featurepath, value=order number. 
+
+    // double for loop (columns and configcolumns) to combine path + order. performance not an issue. 
+    for (columnSetting in settingsToUpdate)
+    {
+      if (settingsToUpdate.hasOwnProperty(columnSetting))
+      {
+        // loop through available attributes.
+        for (columnConfig in config.columnConfigs)
+        {
+          if (config.columnConfigs.hasOwnProperty(columnConfig))
+          {
+            // see if they match.
+            if (settingsToUpdate[columnSetting].field == config.columnConfigs[columnConfig]["dataField"])
+            {
+              columnOrder[config.columnConfigs[columnConfig]["featurePath"]] = (parseInt(columnSetting, 10) + 1) * 5;
+            }
+          }
+        }
+      }
+    }
+
+    var result = sforce.apex.execute("AccountContactRelationCubeController", "reorderColumns", {userId : ALM.modelLocator.userId(), attributeMap : JSON.stringify(columnOrder)}, 
+		{ 
+			onSuccess: function(result){}, 
+			onFailure: function(message)
+			{			
+        console.log(message);
+				ACE.FaultHandlerDialog.show(message);
+			} 
+    });   
+  }
+
+  function updateFilterButtonState(isOpen)
+  {
+    var result = sforce.apex.execute("AccountContactRelationCubeController", "updateFilterButtonState", {userId : ALM.modelLocator.userId(), isOpen : JSON.stringify(isOpen)}, 
+		{ 
+			onSuccess: function(result){}, 
+			onFailure: function(message){} 
+    });
+  }
+
+  function addSaveAndCancelButtons() 
+  {
+    container = $("#saveAndCancelButtonsContainer");
+    container.empty();
+
+    if (shouldShowSaveAndCancelButton)
+    {
+      var cancelButton
+      = $('<button type="button" id="cancelButton" class="applyToSelected la-ripple-container" style="float: right;">' + config.cancelButtonLabel + '</button>').appendTo(container);
+      var saveButton
+      = $('<button type="button" id="saveButton" class="applyToSelected la-ripple-container" style="float: right;">' + config.saveButtonLabel + '</button>').appendTo(container);
+      cancelButton.on("click", handleCancelButton);
+      saveButton.on("click", handleSaveButton);
+    }
+    var loadNext1000Button
+    = $('<button type="button" id="loadNext1000Button" class="applyToSelected la-ripple-container" style="float: left;">' + config.loadButtonLabel + '</button>').appendTo(container);
+    loadNext1000Button.on("click", handleLoadNext1000Button);
+  }
+
+  // hide/show the filter content when chevron is clicked. 
+  var handleFilterToggle = function()
+  {
+    if (hasExpandedFilterCache)
+    {
+      turnFilterOff();
+    } 
+    else  
+    {
+      turnFilterOn(); 
+    }
+  }
+
+  var handleShowInactiveCheckbox = function() 
+  {
+    // if it's currently editin a cell, commit it.
+    grid.grid.getEditorLock().commitCurrentEdit();
+
+    $("#tableContainer").empty();
+    if ($('#showInactiveAccountContactRelationsCheckbox').is(":checked"))
+    {
+      // update state in wrapper so minimizing the filter won't affect it. 
+      showInactiveCache = true; 
+      addAccountContactRelationGrid(resultsAllCache);
+    }
+    else 
+    {
+      showInactiveCache = false; 
+      storeResultsActiveOnly();
+      addAccountContactRelationGrid(resultsActiveOnlyCache);
+    }
+  }
+
+  // everytime the text is changed, update the state of the text in the collapsible filter wrapper 
+  var handleFilterTextChange = function ()
+  {
+    filterTextCache = $('#filterTextArea').val();
+    grid.dataProvider.refresh();
+  }
+
+  // put the result cube data in the cube wrapper. 
+  function storeResults(results) 
+  {
+    cubeDataCache = results;
+    if (cubeDataCache.currentRecordType == 'Account') {
+      resultsAllCache = results.indirectContacts;
+    } else if (cubeDataCache.currentRecordType == 'Contact') {
+      resultsAllCache = results.indirectAccounts;
+    } 
+    if (resultsAllCache == null) {
+      resultsAllCache = [];
+    }
+  }
+
+  /*
+  get subset of rows that are active and stores it to resultsActiveOnly. 
+  */
+  function storeResultsActiveOnly()
+  {
+    var resultsActiveOnly = [];
+    results = resultsAllCache;
+
+    // case where if size of data is 1, results isn't an array. 
+    if (results[0] == undefined) 
+    {
+      if (results['IsActive'] == "true" || results['IsActive'] == true) 
+      {
+        resultsActiveOnly.push(results);
+      }
+    }
+    else
+    {
+      for (i in results)
+      {
+        if (results[i]['IsActive'] == "true" || results[i]['IsActive'] == true) 
+        {
+          resultsActiveOnly.push(results[i]);
+        }
+      }
+    }
+    resultsActiveOnlyCache = resultsActiveOnly;
+  }
+
+  // adds a blank row to grid. 
+  function handleNewButton() {
+    // if it's currently editin a cell, commit it. 
+    grid.grid.getEditorLock().commitCurrentEdit();
+
+    newId = "new_" + currentNewId;
+    
+    // set startdate to todays date 
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // make the new record
+    var newItem = { 
+            "id": newId, 
+            "Id": newId, 
+            "IsActive": 'true', 
+            "StartDate": Slick.AccountContactRelationCube.FormatDate(today)
+        };       
+    updateUpdateList(newId, "StartDate", Slick.AccountContactRelationCube.FormatDate(today));
+    currentNewId++; 
+    grid.addItems(newItem);
+    updateGridSize();
+
+    // Add the new relation to the dataset. 
+    resultsAll = resultsAllCache;
+    resultsAll.push(newItem);
+    resultsAllCache = resultsAll;
+
+    shouldShowSaveAndCancelButton = true; 
+    addSaveAndCancelButtons();
+  }
+
+  /* updates the size of the slickgrid. so when you add a new row or something, and it's too big it'll resize itself. should call during initialiation too */
+  function calculateMaxNumberOfRows() {
+    var divall = $("#accountContactRelationCubeContainer");
+    var div1 = $("#collapsibleContainerButtonWrapper");
+    var div2 = $("#addNewButtonContainer");
+    var div3 = $("#saveAndCancelButtonsContainer");
+    var numRows = (divall.innerHeight() - div2.outerHeight() - div3.outerHeight() - div1.outerHeight() - 45 - 20)/25;
+    return numRows; 
+  }
+
+  function updateGridSize() {
+    var numRows = calculateMaxNumberOfRows();
+    if (numRows != currentNumberOfRowsDisplayed)
+    {
+      grid.grid.setOptions({
+        maxNumberOfRows: numRows
+      });
+      currentNumberOfRowsDisplayed = numRows;
+    }
+  }
+
+  /*
+  Updates the Update List when stuff in the slickgrid gets changed (i.e. user updates a account/contact relation)
+  */
+  function updateUpdateList(accountContactRelationId, fieldToReplace, newValue) {
+
+    if (fieldToReplace == 'IsActive' && newValue == false)
+    {
+      shouldShowDeactivationConfirmation = true;
+    }
+
+    if (accountContactRelationId in updateListCache) {
+      updateListCache[accountContactRelationId][fieldToReplace] = newValue; 
+    }
+    else {
+      var o = {};
+      o[fieldToReplace] = newValue;
+      updateListCache[accountContactRelationId] = o;
+    }
+    shouldShowSaveAndCancelButton = true; 
+    addSaveAndCancelButtons();
+  }
+
+  function handleSave() {
+    // if it's currently editin a cell, commit it. 
+    grid.grid.getEditorLock().commitCurrentEdit();
+
+    sforce.apex.execute("AccountContactRelationCubeController", "updateAccountContactRelations", 
+          { 
+            currentRecordId : JSON.stringify(cubeDataCache.currentRecordId), 
+            currentRecordType : JSON.stringify(cubeDataCache.currentRecordType),
+            updateList : JSON.stringify(updateListCache)
+          },
+      { 
+      onSuccess: function(result){
+        handleFriendlyErrorMessage(result[0]);
+        if (result[0] == "")
+        {
+          refreshCube();
+        }
+      },        
+      onFailure: function(result){
+        refreshCube();
+        ACE.FaultHandlerDialog.show
+          ({
+            title:   "Warning",
+            message: "Error from Salesforce", 
+            error:   result.faultstring
+          });
+      }
+    });
+  }
+
+  function handleSaveButton() {
+
+    if (shouldShowDeactivationConfirmation)
+    {
+      displayDeactivationWarning();
+    }
+    else 
+    {
+      handleSave();
+    }
+  }
+
+  function handleCancelButton() {
+    refreshCube();
+  }
+
+  function refreshCube() {
+    sforce.apex.execute("AccountContactRelationCubeController", "getCubeData", {recordId : dataProviderCache.Id, loggedInUserId  : ALM.modelLocator.userId(), loadLimit : currentLimit}, 
+    { 
+      onSuccess: _token.onSuccess,        
+      onFailure: _token.onFailure
+    });
+  }
+
+  function handleLoadNext1000Button() {
+    currentLimit += 1000; 
+    sforce.apex.execute("AccountContactRelationCubeController", "getCubeData", {recordId : dataProviderCache.Id, loggedInUserId  : ALM.modelLocator.userId(), loadLimit : currentLimit}, 
+    { 
+      onSuccess: _token.onSuccess,        
+      onFailure: _token.onFailure
+    });
+  }
+
+  /* Makes a Error modal and populates it given the error string. */ 
+  function handleFriendlyErrorMessage(errorString)
+  {
+    errorStringToPrint = "";
+    addedRequiredError = false; 
+    hasPermissionError = false;
+
+    if (errorString != "") 
+    {
+      resultSplit = errorString.split('&&&');
+      if (errorString.includes("INSUFFICIENT_ACCESS"))
+      {
+        hasPermissionError = true; 
+      }
+      for (resultSplitIndex in resultSplit)
+      {
+        if (resultSplit.hasOwnProperty(resultSplitIndex))
+        {
+          if (resultSplit[resultSplitIndex].length > 0)
+          {
+            // we only print the required error once. 
+            if (resultSplit[resultSplitIndex].includes("REQUIRED_FIELD_MISSING") && hasPermissionError == false)
+            {
+              if (addedRequiredError)
+              {
+                continue;
+              }
+              addedRequiredError = true; 
+              errorStringToPrint += "Fields highlighted in red are required. Fill in the fields and then save." + '</br>';
+              continue;
+            }
+            if (resultSplit[resultSplitIndex].includes("FIELD_CUSTOM_VALIDATION_EXCEPTION") && hasPermissionError == false)
+            {
+              errorStringToPrint += resultSplit[resultSplitIndex].split("FIELD_CUSTOM_VALIDATION_EXCEPTION,")[1] + '</br>';
+              continue;
+            }
+            
+            // other exceptions
+            errorStringToPrint += resultSplit[resultSplitIndex] + '</br>';
+          }
+        }
+      }
+      if (hasPermissionError)
+      {
+        ACEConfirm.show
+          (
+            "You do not have permissions to edit. Contact your administrator.</br>",
+            "Warning",
+            [ "OK"],
+            function(result)
+            {
+            }
+          );
+      }
+      else 
+      {
+        ACEConfirm.show
+        (
+          errorStringToPrint,
+          "Warning",
+          [ "OK"],
+          function(result)
+          {
+          }
+        );
+      }
+    }
+  }
+
+  function displayDeactivationWarning()
+  {
+    ACEConfirm.show
+    (
+      "Are you sure you want to inactivate selected relationship records?",
+      "Please Confirm",
+      [ "Yes", "No"],
+      function(result)
+      {
+        if(result == 'Yes')
+        {
+          handleSave();
+        }
+      }
+    );  
+  }
+
+  // when user clicks a cell that they don't have write permission for. 
+  function displayNoWriteAccessWarning()
+  {
+    ACEConfirm.show
+    (
+      "You do not have permissions to edit this relation.",
+      "Warning",
+      [ "OK"],
+      function(result)
+      {
+      }
+    );  
+  }
+
+  function commitACRCGridChanges()
+  {
+    grid.grid.getEditorLock().commitCurrentEdit();
+  }
+
+  $.extend(true, window,
+  {
+    "Custom":
+    {
+      "AccountContactRelationCube": AccountContactRelationCube
+    },
+    "PS":
+    {
+      "AccountContactRelationCubeHelpers":
+      {
+        "updateUpdateList": updateUpdateList,
+        "displayNoWriteAccessWarning": displayNoWriteAccessWarning,
+        "commitACRCGridChanges": commitACRCGridChanges
+      }
+    }		
+  });
+  
+  // POLYFILLS LOL
+
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/includes
+  if (!String.prototype.includes) {
+    Object.defineProperty(String.prototype, 'includes', {
+      value: function(search, start) {
+        if (typeof start !== 'number') {
+          start = 0
+        }
+        
+        if (start + search.length > this.length) {
+          return false
+        } else {
+          return this.indexOf(search, start) !== -1
+        }
+      }
+    })
+  }
+  // https://tc39.github.io/ecma262/#sec-array.prototype.includes
+  if (!Array.prototype.includes) {
+    Object.defineProperty(Array.prototype, 'includes', {
+      value: function(searchElement, fromIndex) {
+
+        if (this == null) {
+          throw new TypeError('"this" is null or not defined');
+        }
+
+        // 1. Let O be ? ToObject(this value).
+        var o = Object(this);
+
+        // 2. Let len be ? ToLength(? Get(O, "length")).
+        var len = o.length >>> 0;
+
+        // 3. If len is 0, return false.
+        if (len === 0) {
+          return false;
+        }
+
+        // 4. Let n be ? ToInteger(fromIndex).
+        //    (If fromIndex is undefined, this step produces the value 0.)
+        var n = fromIndex | 0;
+
+        // 5. If n ≥ 0, then
+        //  a. Let k be n.
+        // 6. Else n < 0,
+        //  a. Let k be len + n.
+        //  b. If k < 0, let k be 0.
+        var k = Math.max(n >= 0 ? n : len - Math.abs(n), 0);
+
+        function sameValueZero(x, y) {
+          return x === y || (typeof x === 'number' && typeof y === 'number' && isNaN(x) && isNaN(y));
+        }
+
+        // 7. Repeat, while k < len
+        while (k < len) {
+          // a. Let elementK be the result of ? Get(O, ! ToString(k)).
+          // b. If SameValueZero(searchElement, elementK) is true, return true.
+          if (sameValueZero(o[k], searchElement)) {
+            return true;
+          }
+          // c. Increase k by 1. 
+          k++;
+        }
+
+        // 8. Return false
+        return false;
+      }
+    });
+  }
+
+  if (!String.prototype.startsWith) {
+    Object.defineProperty(String.prototype, 'startsWith', {
+        value: function(search, pos) {
+            return this.substr(!pos || pos < 0 ? 0 : +pos, search.length) === search;
+        }
+    });
+  }
+
+//# sourceURL=AccountContactRelationCube.js 
+})(jQuery);
